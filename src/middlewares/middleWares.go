@@ -5,7 +5,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	"hmdp/src/beans"
 	"hmdp/src/utils"
 	"hmdp/src/utils/db"
@@ -35,7 +34,8 @@ func RefreshTokenInterceptor(c *gin.Context) {
 	// auth不为空才需要刷新，为空直接放行
 	if auth != "" {
 		m, err := db.RedisCli.HGetAll(ctx, utils.LOGIN_CODE_PREFIX+auth).Result()
-		if err != redis.Nil {
+		// 如果获取到的map不为空
+		if len(m) != 0 { // 对于map的获取 不能err == redis.nil判断, 而要判断map是否为空map
 			dto := beans.UserDTO{}
 			utils.Map2Struct(m, &dto)
 			c.Set("userDTO", dto)
@@ -45,12 +45,14 @@ func RefreshTokenInterceptor(c *gin.Context) {
 		}
 	}
 	c.Next()
+
 }
 
 func LoginInterceptor(c *gin.Context) {
-	_, exists := c.Get("userDTO")
+	v, exists := c.Get("userDTO")
 	if exists {
 		c.Next()
+		fmt.Println(v)
 	} else {
 		c.Abort()
 		c.JSON(401, beans.Result{ErrMsg: "未登录，请先登录！"})
