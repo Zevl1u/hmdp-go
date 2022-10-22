@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"time"
@@ -20,4 +21,22 @@ func RandStr(length int) string {
 		arr[i] = 'a' + n
 	}
 	return string(arr)
+}
+
+func Struct2Map(obj interface{}) map[string]interface{} {
+	bytes, err := json.Marshal(obj)
+	if err != nil {
+		panic(err)
+	}
+	res := map[string]interface{}{}
+	json.Unmarshal(bytes, &res)
+	return res
+}
+
+func Map2Struct(m map[string]string, obj interface{}) {
+	bytes, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	json.Unmarshal(bytes, &obj)
 }

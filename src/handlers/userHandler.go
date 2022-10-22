@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"hmdp/src/beans"
 	"hmdp/src/services"
@@ -24,6 +23,6 @@ func (uh UserHandler) Login(c *gin.Context) {
 }
 
 func (uh UserHandler) Me(c *gin.Context) {
-	user := sessions.Default(c).Get("userDTO").(beans.UserDTO)
+	user, _ := c.Get("userDTO")
 	c.JSON(200, beans.Result{Success: true, Data: user})
 }

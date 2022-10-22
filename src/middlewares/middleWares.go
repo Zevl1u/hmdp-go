@@ -5,7 +5,10 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"hmdp/src/beans"
+	"hmdp/src/utils"
+	"hmdp/src/utils/db"
 	"time"
 )
 
@@ -26,9 +29,27 @@ func Session(key string) gin.HandlerFunc {
 	return sessions.Sessions(key, store)
 }
 
+func RefreshTokenInterceptor(c *gin.Context) {
+	ctx := c.Request.Context()
+	auth := c.GetHeader(utils.AUTHORIZATION)
+	// auth不为空才需要刷新，为空直接放行
+	if auth != "" {
+		m, err := db.RedisCli.HGetAll(ctx, utils.LOGIN_CODE_PREFIX+auth).Result()
+		if err != redis.Nil {
+			dto := beans.UserDTO{}
+			utils.Map2Struct(m, &dto)
+			c.Set("userDTO", dto)
+			db.RedisCli.Expire(ctx, utils.LOGIN_CODE_PREFIX+auth, utils.LOGIN_USERDTO_TTL)
+		} else if err != nil {
+			panic(err)
+		}
+	}
+	c.Next()
+}
+
 func LoginInterceptor(c *gin.Context) {
-	session := sessions.Default(c)
-	if user := session.Get("user"); user != nil {
+	_, exists := c.Get("userDTO")
+	if exists {
 		c.Next()
 	} else {
 		c.Abort()
