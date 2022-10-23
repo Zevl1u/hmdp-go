@@ -35,7 +35,7 @@ func RefreshTokenInterceptor(c *gin.Context) {
 	if auth != "" {
 		m, err := db.RedisCli.HGetAll(ctx, utils.LOGIN_CODE_PREFIX+auth).Result()
 		// 如果获取到的map不为空
-		if len(m) != 0 { // 对于map的获取 不能err == redis.nil判断, 而要判断map是否为空map
+		if len(m) != 0 { // 对于map的获取 不能err == redis.nil判断, 而要判断map是否为空map!!!
 			dto := beans.UserDTO{}
 			utils.Map2Struct(m, &dto)
 			c.Set("userDTO", dto)

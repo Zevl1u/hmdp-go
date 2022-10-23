@@ -9,4 +9,6 @@ const (
 	LOGIN_USERDTO_TTL     = 30 * time.Minute
 
 	AUTHORIZATION = "Authorization"
+
+	CACHE_SHOP_PREFIX = "cache:shop:"
 )
