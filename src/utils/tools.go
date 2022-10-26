@@ -23,17 +23,17 @@ func RandStr(length int) string {
 	return string(arr)
 }
 
-func Struct2Map(obj interface{}) map[string]string {
+func Struct2Map(obj interface{}) map[string]interface{} {
 	bytes, err := json.Marshal(obj)
 	if err != nil {
 		panic(err)
 	}
-	res := map[string]string{}
+	var res map[string]interface{}
 	json.Unmarshal(bytes, &res)
 	return res
 }
 
-func Map2Struct(m map[string]string, obj interface{}) {
+func Map2Struct(m map[string]interface{}, obj interface{}) {
 	bytes, err := json.Marshal(m)
 	if err != nil {
 		panic(err)
