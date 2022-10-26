@@ -33,16 +33,19 @@ func RefreshTokenInterceptor(c *gin.Context) {
 	auth := c.GetHeader(utils.AUTHORIZATION)
 	// auth不为空才需要刷新，为空直接放行
 	if auth != "" {
-		var dto beans.UserDTO
-		err := db.RedisCli.Get(ctx, utils.LOGIN_CODE_PREFIX+auth).Scan(&dto)
-		if err != nil {
+		m, err := db.RedisCli.HGetAll(ctx, utils.LOGIN_CODE_PREFIX+auth).Result()
+		// 如果获取到的map不为空
+		if len(m) != 0 { // 对于map的获取 不能err == redis.nil判断, 而要判断map是否为空map!!!
+			dto := beans.UserDTO{}
+			utils.Map2Struct(m, &dto)
+			c.Set("userDTO", dto)
+			db.RedisCli.Expire(ctx, utils.LOGIN_CODE_PREFIX+auth, utils.LOGIN_USERDTO_TTL)
+		} else if err != nil {
 			panic(err)
 		}
-		c.Set("userDTO", dto)
-		db.RedisCli.Expire(ctx, utils.LOGIN_CODE_PREFIX+auth, utils.LOGIN_USERDTO_TTL)
 	}
-	// 为空直接放行
 	c.Next()
+
 }
 
 func LoginInterceptor(c *gin.Context) {

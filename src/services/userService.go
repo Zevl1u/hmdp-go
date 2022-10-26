@@ -71,7 +71,13 @@ func (us UserService) LoginByVerCode(c *gin.Context) beans.Result {
 	if err != nil {
 		panic(err)
 	}
-	db.RedisCli.Set(ctx, utils.LOGIN_CODE_PREFIX+uuid.String(), &userDTO, utils.LOGIN_USERDTO_TTL)
+	userDTO2Map := utils.Struct2Map(userDTO)
+	err = db.RedisCli.HSet(ctx, utils.LOGIN_CODE_PREFIX+uuid.String(), userDTO2Map).Err()
+	if err != nil {
+		panic(err)
+	}
+	// 设置有效时间TTL
+	db.RedisCli.Expire(ctx, utils.LOGIN_CODE_PREFIX+uuid.String(), utils.LOGIN_USERDTO_TTL)
 	// 将登录凭证写入头
 	c.Header(utils.AUTHORIZATION, uuid.String())
 	return beans.Result{Success: true}

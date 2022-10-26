@@ -18,6 +18,5 @@ func ShopRouterInit(r *gin.Engine) {
 		// 动态路由 可通过c.Param("id")获取参数
 		shopRouter.GET("/:id", shopHandler.Query4ShopInfo)
 		shopRouter.GET("/type-list", shopHandler.ShowAllShopType)
-		shopRouter.POST("/update-info", shopHandler.UpdateShopInfo)
 	}
 }
