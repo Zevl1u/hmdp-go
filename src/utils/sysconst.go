@@ -10,5 +10,6 @@ const (
 
 	AUTHORIZATION = "Authorization"
 
-	CACHE_SHOP_PREFIX = "cache:shop:"
+	CACHE_SHOP_PREFIX   = "cache:shop:"
+	CACHE_SHOP_INFO_TTL = 30 * time.Minute
 )
