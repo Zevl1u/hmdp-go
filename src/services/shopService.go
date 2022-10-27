@@ -2,39 +2,93 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/go-redis/redis/v8"
+	"gorm.io/gorm"
 	"hmdp/src/beans"
 	"hmdp/src/utils"
 	"hmdp/src/utils/db"
+	"time"
 )
 
 type ShopService struct {
 }
 
-func (ss ShopService) QueryShopById(id uint) beans.Result {
-	ctx := context.Background()
-	key := fmt.Sprintf("%s%d", utils.CACHE_SHOP_PREFIX, id)
-	// 在redis里查询
+// QueryShopById 根据id查询店铺信息
+func (ss ShopService) QueryShopById(id uint) (result beans.Result) {
+	var ctx = context.Background()
+	var key = fmt.Sprintf("%s%d", utils.CACHE_SHOP_PREFIX, id)
 	var shop beans.Shop
-	if err := db.RedisCli.Get(ctx, key).Scan(&shop); err == redis.Nil { // 若缓存里不存在，则需要去数据库查找
-		if res := db.DB.First(&shop, "id = ?", id); res.Error != nil {
-			panic(err)
-		} else if shop == (beans.Shop{}) { // 数据库里不存在
-			return beans.Result{Success: false, ErrMsg: "不存在该商家!"}
-		} else { // 数据库里存在 存入redis中
-			if err := db.RedisCli.Set(ctx, key, &shop, utils.CACHE_SHOP_INFO_TTL).Err(); err != nil {
+	var stringCmdPtr = db.RedisCli.Get(ctx, key)
+	// 处理在缓存中存在key的情况的函数
+	var GetInCache = func(jsonStr string) beans.Result {
+		if jsonStr == "" {
+			return beans.Result{Success: false, ErrMsg: "不存在的商家！"}
+		} else {
+			if err := json.Unmarshal([]byte(jsonStr), &shop); err != nil {
 				panic(err)
 			}
+			return beans.Result{Success: true, Data: shop}
 		}
-	} else if err != nil { // shop不为零值，证明在缓存里查询到了
-		panic(err)
-	} else { // shop不为零值，证明在缓存里查询到了
-		return beans.Result{Success: true, Data: shop}
 	}
-	return beans.Result{Success: true, Data: shop}
+	// 获取锁函数
+	var tryLock = func(key string) bool {
+		ctx := context.Background()
+		success, err := db.RedisCli.SetNX(ctx, key, 1, utils.UPDATE_SHOP_MUTEX_TTL).Result()
+		if err != nil {
+			panic(err)
+		}
+		return success
+	}
+	// 释放锁函数
+	var unlock = func(key string) {
+		ctx := context.Background()
+		if err := db.RedisCli.Del(ctx, key).Err(); err != nil {
+			panic(err)
+		}
+	}
+
+	// 缓存里查到了key对应数据
+	if jsonStr, err := stringCmdPtr.Result(); err == nil {
+		result = GetInCache(jsonStr)
+	} else if err == redis.Nil {
+		lockKey := fmt.Sprintf("%s%d", utils.MUTEX_SHOP_PREFIX, id)
+		// 获取锁失败 过一段时间再尝试访问
+		if !tryLock(lockKey) {
+			time.Sleep(100 * time.Millisecond)
+			return ss.QueryShopById(id)
+		} else { // 获取到锁
+			defer unlock(lockKey) // 方法结束释放
+			// 再次检查缓存里是否能查到key对应数据
+			if jsonStr, err := stringCmdPtr.Result(); err == nil {
+				result = GetInCache(jsonStr)
+			} else if err == redis.Nil { // 缓存里不存在
+				// 查询数据库
+				if res := db.DB.First(&shop, "id = ?", id); res.Error != nil {
+					// 如果记录没找到
+					if res.Error == gorm.ErrRecordNotFound {
+						// 存入空字符串 用以解决缓存穿透问题
+						db.RedisCli.Set(ctx, key, "", time.Minute)
+						result = beans.Result{Success: false, ErrMsg: "不存在的商家!"}
+					} else {
+						panic(res.Error)
+					}
+				} else { // 数据库里存在 存入redis中
+					result = beans.Result{Success: true, Data: shop}
+					if err = db.RedisCli.Set(ctx, key, &shop, utils.CACHE_SHOP_INFO_TTL).Err(); err != nil {
+						panic(err)
+					}
+				}
+			}
+		}
+	} else if err != nil {
+		panic(err)
+	}
+	return
 }
 
+// GetAllShopType 获取所有店铺类型列表
 func (ss ShopService) GetAllShopType() beans.Result {
 	ctx := context.Background()
 	key := "shop-type-list"
@@ -65,6 +119,7 @@ func (ss ShopService) GetAllShopType() beans.Result {
 	return beans.Result{Success: true, Data: shopTypeList}
 }
 
+// UpdateShopInfo 更新店铺信息 删除缓存 下次请求再重建缓存
 func (ss ShopService) UpdateShopInfo(shop beans.Shop) beans.Result {
 	ctx := context.Background()
 	if shop.Id == 0 {
