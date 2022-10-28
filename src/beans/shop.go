@@ -1,15 +1,14 @@
 package beans
 
 import (
-	"encoding/gob"
 	"encoding/json"
 	"time"
 )
 
-func init() {
-	gob.Register(Shop{})
-	gob.Register(ShopType{})
-}
+//func init() {
+//	gob.Register(Shop{})
+//	gob.Register(ShopType{})
+//}
 
 type Shop struct {
 	Id         uint      `json:"id,omitempty" form:"id"`
@@ -60,4 +59,17 @@ func (st *ShopType) MarshalBinary() ([]byte, error) {
 
 func (st *ShopType) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, st)
+}
+
+type LogicExpireShopInfo struct {
+	ExpireTime time.Time `json:"expire_time"`
+	Shop       Shop      `json:"shop"`
+}
+
+func (lesi *LogicExpireShopInfo) MarshalBinary() ([]byte, error) {
+	return json.Marshal(lesi)
+}
+
+func (lesi *LogicExpireShopInfo) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, lesi)
 }

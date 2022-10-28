@@ -18,7 +18,7 @@ func (sh ShopHandler) Query4ShopInfo(c *gin.Context) {
 	if err != nil {
 		c.String(http.StatusOK, "错误店铺id!")
 	}
-	result := shopService.QueryShopById(uint(id))
+	result := shopService.QueryShopByIdWithLogicExpire(uint(id))
 	c.JSON(http.StatusOK, result)
 }
 

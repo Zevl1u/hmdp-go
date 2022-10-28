@@ -15,54 +15,81 @@ import (
 type ShopService struct {
 }
 
-// QueryShopById 根据id查询店铺信息
-func (ss ShopService) QueryShopById(id uint) (result beans.Result) {
+// QueryShopByIdWithLogicExpire 使用逻辑过期来解决缓存击穿
+func (ss ShopService) QueryShopByIdWithLogicExpire(id uint) (result beans.Result) {
+	var ctx = context.Background()
+	var key = fmt.Sprintf("%s%d", utils.CACHE_SHOP_PREFIX, id)
+	var logicExpireShopInfo beans.LogicExpireShopInfo
+	var stringCmdPtr = db.RedisCli.Get(ctx, key)
+	const lockKey = "logic:expire:lockKey:"
+
+	// 缓存里查到了key对应数据
+	err := stringCmdPtr.Scan(&logicExpireShopInfo)
+	if err != nil {
+		panic(err)
+	}
+	if time.Now().After(logicExpireShopInfo.ExpireTime) { // 过期
+		fmt.Println("第一次检查过期")
+		if tryLock(lockKey) { // 获取到锁
+			// doublecheck 再次获取缓存检查是否过期
+			err = stringCmdPtr.Scan(&logicExpireShopInfo)
+			if err != nil {
+				panic(err)
+			}
+			if time.Now().After(logicExpireShopInfo.ExpireTime) { // 依旧过期
+				fmt.Println("获取锁后 第二次检查过期")
+				go func() {
+					// 模仿数据库查询要时间
+					fmt.Println("进入了新的goroutine")
+					time.Sleep(5 * time.Second)
+					var shop beans.Shop
+					if res := db.DB.First(&shop, "id = ?", id); res.Error == nil {
+						db.RedisCli.Set(ctx, key, &beans.LogicExpireShopInfo{
+							ExpireTime: time.Now().Add(time.Minute),
+							Shop:       shop,
+						}, -1)
+						unlock(lockKey)
+					}
+				}()
+			}
+		}
+	}
+	result = beans.Result{Success: true, Data: logicExpireShopInfo.Shop}
+	return
+}
+
+// QueryShopByIdWithMutex 根据id查询店铺信息 使用互斥锁解决缓存击穿
+func (ss ShopService) QueryShopByIdWithMutex(id uint) (result beans.Result) {
 	var ctx = context.Background()
 	var key = fmt.Sprintf("%s%d", utils.CACHE_SHOP_PREFIX, id)
 	var shop beans.Shop
 	var stringCmdPtr = db.RedisCli.Get(ctx, key)
-	// 处理在缓存中存在key的情况的函数
-	var GetInCache = func(jsonStr string) beans.Result {
+	// GetAndStore 处理在缓存中存在key的情况的函数
+	// 主要实现对空值和真实商店数据的逻辑处理
+	var GetAndStore = func(jsonStr string, shop *beans.Shop) beans.Result {
 		if jsonStr == "" {
 			return beans.Result{Success: false, ErrMsg: "不存在的商家！"}
 		} else {
-			if err := json.Unmarshal([]byte(jsonStr), &shop); err != nil {
+			if err := json.Unmarshal([]byte(jsonStr), shop); err != nil {
 				panic(err)
 			}
-			return beans.Result{Success: true, Data: shop}
+			return beans.Result{Success: true, Data: *shop}
 		}
 	}
-	// 获取锁函数
-	var tryLock = func(key string) bool {
-		ctx := context.Background()
-		success, err := db.RedisCli.SetNX(ctx, key, 1, utils.UPDATE_SHOP_MUTEX_TTL).Result()
-		if err != nil {
-			panic(err)
-		}
-		return success
-	}
-	// 释放锁函数
-	var unlock = func(key string) {
-		ctx := context.Background()
-		if err := db.RedisCli.Del(ctx, key).Err(); err != nil {
-			panic(err)
-		}
-	}
-
 	// 缓存里查到了key对应数据
 	if jsonStr, err := stringCmdPtr.Result(); err == nil {
-		result = GetInCache(jsonStr)
+		result = GetAndStore(jsonStr, &shop)
 	} else if err == redis.Nil {
 		lockKey := fmt.Sprintf("%s%d", utils.MUTEX_SHOP_PREFIX, id)
 		// 获取锁失败 过一段时间再尝试访问
 		if !tryLock(lockKey) {
 			time.Sleep(100 * time.Millisecond)
-			return ss.QueryShopById(id)
+			return ss.QueryShopByIdWithMutex(id)
 		} else { // 获取到锁
 			defer unlock(lockKey) // 方法结束释放
 			// 再次检查缓存里是否能查到key对应数据
 			if jsonStr, err := stringCmdPtr.Result(); err == nil {
-				result = GetInCache(jsonStr)
+				result = GetAndStore(jsonStr, &shop)
 			} else if err == redis.Nil { // 缓存里不存在
 				// 查询数据库
 				if res := db.DB.First(&shop, "id = ?", id); res.Error != nil {
@@ -133,4 +160,22 @@ func (ss ShopService) UpdateShopInfo(shop beans.Shop) beans.Result {
 		panic(err)
 	}
 	return beans.Result{Success: true}
+}
+
+// 获取锁函数
+func tryLock(key string) bool {
+	ctx := context.Background()
+	success, err := db.RedisCli.SetNX(ctx, key, 1, utils.UPDATE_SHOP_MUTEX_TTL).Result()
+	if err != nil {
+		panic(err)
+	}
+	return success
+}
+
+// 释放锁函数
+func unlock(key string) {
+	ctx := context.Background()
+	if err := db.RedisCli.Del(ctx, key).Err(); err != nil {
+		panic(err)
+	}
 }
