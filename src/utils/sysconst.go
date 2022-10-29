@@ -14,6 +14,6 @@ const (
 	MUTEX_SHOP_PREFIX = "mutex:shop:"
 
 	CACHE_SHOP_INFO_TTL = 30 * time.Minute
-
-	UPDATE_SHOP_MUTEX_TTL = 5 * time.Second
+	CACHE_NULL_TTL      = 10 * time.Minute
+	MUTEX_MAX_TTL       = 5 * time.Second
 )
