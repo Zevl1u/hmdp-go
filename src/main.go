@@ -16,7 +16,7 @@ func main() {
 	// 初始化User路由分组
 	routers.UserRouterInit(r)
 	routers.ShopRouterInit(r)
-
+	routers.VoucherRouterInit(r)
 	// 监听并在 0.0.0.0:8090 上启动服务
 	r.Run(":8090")
 }

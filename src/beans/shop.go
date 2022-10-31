@@ -11,7 +11,7 @@ import (
 //}
 
 type Shop struct {
-	Id         uint      `json:"id,omitempty" form:"id"`
+	Id         uint      `json:"id,omitempty" form:"id" gorm:"primaryKey"`
 	Name       string    `json:"name,omitempty" form:"name"`
 	TypeId     uint      `json:"type_id,omitempty" form:"type_id"`
 	Images     string    `json:"images,omitempty" form:"images"`
@@ -41,7 +41,7 @@ func (s *Shop) UnmarshalBinary(data []byte) error {
 }
 
 type ShopType struct {
-	Id         uint      `json:"id,omitempty"`
+	Id         uint      `json:"id,omitempty" gorm:"primaryKey"`
 	Name       string    `json:"name,omitempty"`
 	Icon       string    `json:"icon,omitempty"`
 	Sort       uint      `json:"sort,omitempty"`

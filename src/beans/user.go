@@ -11,7 +11,7 @@ import (
 //}
 
 type User struct { // 默认对应的表名是`users`
-	Id         int       `json:"id,omitempty"`
+	Id         int       `json:"id,omitempty" gorm:"primaryKey"`
 	Phone      string    `json:"phone,omitempty"`
 	Password   string    `json:"password,omitempty"`
 	NickName   string    `json:"nick_name,omitempty"`

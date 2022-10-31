@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
+	"hmdp/src/utils/db"
 	"math/rand"
 	"time"
 )
@@ -23,20 +24,16 @@ func RandStr(length int) string {
 	return string(arr)
 }
 
-func Struct2Map(obj interface{}) map[string]interface{} {
-	bytes, err := json.Marshal(obj)
+func RedisIdGenerate(keyPrefix string) int64 {
+	ctx := context.Background()
+	// 生成时间戳
+	timeStamp := time.Now().Unix() - TIMESTAMP_BEGIN
+	// 生成序列号
+	today := time.Now().Format("2006-01-02")
+	key := "incr" + keyPrefix + ":" + today
+	uuid, err := db.RedisCli.Incr(ctx, key).Result()
 	if err != nil {
 		panic(err)
 	}
-	var res map[string]interface{}
-	json.Unmarshal(bytes, &res)
-	return res
-}
-
-func Map2Struct(m map[string]interface{}, obj interface{}) {
-	bytes, err := json.Marshal(m)
-	if err != nil {
-		panic(err)
-	}
-	json.Unmarshal(bytes, obj)
+	return (timeStamp << COUNT_BITS) | uuid
 }
