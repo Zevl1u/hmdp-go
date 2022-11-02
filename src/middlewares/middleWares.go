@@ -2,13 +2,14 @@ package middlewares
 
 import (
 	"fmt"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
-	"github.com/gin-gonic/gin"
 	"hmdp/src/beans"
 	"hmdp/src/utils"
 	"hmdp/src/utils/db"
 	"time"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-gonic/gin"
 )
 
 func RecordTime(c *gin.Context) {

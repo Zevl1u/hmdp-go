@@ -9,7 +9,6 @@ import (
 	"hmdp/src/dao"
 	"hmdp/src/utils"
 	"hmdp/src/utils/db"
-	"time"
 )
 
 type UserService struct {
@@ -18,7 +17,6 @@ type UserService struct {
 var userDao dao.UserDao = dao.UserDao{}
 
 func (us UserService) VerifyCode(c *gin.Context) beans.Result {
-	time.Sleep(5 * time.Second)
 	// 从表单中获取手机号
 	phone := c.Query("phone")
 	// 验证手机号是否有效 无效的话直接返回错误信息

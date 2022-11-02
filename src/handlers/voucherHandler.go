@@ -14,5 +14,9 @@ var voucherService services.VoucherService
 func (vh VoucherHandler) SecKillVoucher(c *gin.Context) {
 
 	res := voucherService.SecKillVoucher(c)
-	c.JSON(http.StatusOK, res)
+	if res.Success {
+		c.JSON(http.StatusOK, res)
+	} else {
+		c.JSON(http.StatusBadRequest, res.ErrMsg)
+	}
 }
