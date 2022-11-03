@@ -6,11 +6,14 @@ import (
 	"hmdp/src/utils"
 	"hmdp/src/utils/db"
 	"strconv"
+	"sync"
 	"time"
 )
 
 type VoucherService struct {
 }
+
+var lock = new(sync.Mutex)
 
 func (vs VoucherService) SecKillVoucher(c *gin.Context) beans.Result {
 	value, exists := c.Get("userDTO")
@@ -37,7 +40,16 @@ func (vs VoucherService) SecKillVoucher(c *gin.Context) beans.Result {
 	if time.Now().After(secKillVoucher.EndTime) {
 		return beans.Result{Success: false, ErrMsg: "秒杀已经结束！"}
 	}
-	//db.DB.Model(&secKillVoucher).Where("stock = ?", secKillVoucher.Stock).Update("stock", secKillVoucher.Stock-1)
+
+	lock.Lock()
+	defer lock.Unlock()
+	// 一人一单
+	var num int
+	db.DB.Raw("select count(*) from tb_voucher_order where user_id = ? and voucher_id = ?", dto.Id, id).Scan(&num)
+	if num > 0 {
+		return beans.Result{Success: false, ErrMsg: "一人限购一张！"}
+	}
+	// 减少库存 乐观锁
 	affected = db.DB.Exec("update tb_seckill_voucher set stock = stock-1 where voucher_id = ? and stock > 0",
 		voucherId).RowsAffected
 	if affected < 1 {
@@ -50,5 +62,6 @@ func (vs VoucherService) SecKillVoucher(c *gin.Context) beans.Result {
 		VoucherId: uint(id),
 	}
 	db.DB.Save(&voucherOrder)
+
 	return beans.Result{Success: true, Data: voucherOrder.Id}
 }

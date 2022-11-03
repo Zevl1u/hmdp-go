@@ -30,7 +30,7 @@ func RedisIdGenerate(keyPrefix string) int64 {
 	timeStamp := time.Now().Unix() - TIMESTAMP_BEGIN
 	// 生成序列号
 	today := time.Now().Format("2006-01-02")
-	key := "incr" + keyPrefix + ":" + today
+	key := "incr:" + keyPrefix + ":" + today
 	uuid, err := db.RedisCli.Incr(ctx, key).Result()
 	if err != nil {
 		panic(err)

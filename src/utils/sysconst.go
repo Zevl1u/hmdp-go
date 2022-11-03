@@ -19,5 +19,5 @@ const (
 
 	TIMESTAMP_BEGIN      = 946684800 // 2000-01-01 00:00:00 的时间戳
 	COUNT_BITS           = 32
-	VOUCHER_ORDER_PREFIX = "voucher:order:"
+	VOUCHER_ORDER_PREFIX = "voucher_order"
 )
