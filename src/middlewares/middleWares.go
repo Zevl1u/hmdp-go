@@ -2,9 +2,11 @@ package middlewares
 
 import (
 	"fmt"
+	"github.com/go-redis/redis/v8"
 	"hmdp/src/beans"
 	"hmdp/src/utils"
 	"hmdp/src/utils/db"
+	"net/http"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -36,7 +38,10 @@ func RefreshTokenInterceptor(c *gin.Context) {
 	if auth != "" {
 		var dto beans.UserDTO
 		err := db.RedisCli.Get(ctx, utils.LOGIN_CODE_PREFIX+auth).Scan(&dto)
-		if err != nil {
+		if err == redis.Nil {
+			c.JSON(http.StatusBadRequest, "token_refresh:登录过期！")
+			c.Abort()
+		} else if err != nil {
 			panic(err)
 		}
 		c.Set("userDTO", dto)

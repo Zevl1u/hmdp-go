@@ -17,6 +17,6 @@ func (vh VoucherHandler) SecKillVoucher(c *gin.Context) {
 	if res.Success {
 		c.JSON(http.StatusOK, res)
 	} else {
-		c.JSON(http.StatusBadRequest, res.ErrMsg)
+		c.JSON(http.StatusBadRequest, res)
 	}
 }

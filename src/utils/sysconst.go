@@ -7,6 +7,7 @@ const (
 	LOGIN_CODE_PREFIX     = "login:code:"
 	LOGIN_CODE_TTL        = 5 * time.Minute
 	LOGIN_USERDTO_TTL     = 30 * time.Minute
+	//LOGIN_USERDTO_TTL = -1
 
 	AUTHORIZATION = "Authorization"
 
@@ -20,4 +21,7 @@ const (
 	TIMESTAMP_BEGIN      = 946684800 // 2000-01-01 00:00:00 的时间戳
 	COUNT_BITS           = 32
 	VOUCHER_ORDER_PREFIX = "voucher_order"
+
+	USER_LOCK     = "user_lock:"
+	USER_LOCK_TTL = 10 * time.Second
 )
